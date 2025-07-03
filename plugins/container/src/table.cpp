@@ -1,26 +1,162 @@
 #include "plugin.h"
+#include "container_type.h"
+#include <array>
+#include <string_view>
 
-#define CONTAINER_TABLE_NAME "containers"
-#define CONTAINER_EXPOSED_FIELD_IP "ip"
-#define CONTAINER_EXPOSED_FIELD_USER "user"
+constexpr std::string_view CONTAINER_TABLE_NAME{"containers"};
 
-enum
+namespace FIELD_STR
 {
-    CONTAINER_FIELD_IP,
-    CONTAINER_FIELD_USER,
-    CONTAINER_FIELD_MAX,
+constexpr std::string_view ID{"id"};
+constexpr std::string_view NAME{"name"};
+constexpr std::string_view TYPE{"type"};
+constexpr std::string_view IMAGE{"image"};
+constexpr std::string_view IMAGEID{"imageid"};
+constexpr std::string_view IMAGEREPO{"imagerepo"};
+constexpr std::string_view IMAGETAG{"imagetag"};
+constexpr std::string_view IMAGEDIGEST{"imagedigest"};
+constexpr std::string_view CPU_SHARES{"cpu_shares"};
+constexpr std::string_view MEMORY_LIMIT{"memory_limit"};
+constexpr std::string_view CPU_QUOTA{"cpu_quota"};
+constexpr std::string_view CPU_PERIOD{"cpu_period"};
+constexpr std::string_view IP{"ip"};
+constexpr std::string_view USER{"user"};
+constexpr std::string_view CREATED_TIME{"created_time"};
+constexpr std::string_view PRIVILEGED{"privileged"};
+constexpr std::string_view HOST_PID{"host_pid"};
+constexpr std::string_view HOST_NETWORK{"host_network"};
+constexpr std::string_view HOST_IPC{"host_ipc"};
+constexpr std::string_view IS_POD_SANDBOX{"is_pod_sandbox"};
+} // namespace FIELD_STR
+
+enum class FIELD_IDX : uintptr_t
+{
+    ID = 0,
+    NAME,
+    TYPE,
+    IMAGE,
+    IMAGEID,
+    IMAGEREPO,
+    IMAGETAG,
+    IMAGEDIGEST,
+    CPU_SHARES,
+    MEMORY_LIMIT,
+    CPU_QUOTA,
+    CPU_PERIOD,
+    IP,
+    USER,
+    CREATED_TIME,
+    PRIVILEGED,
+    HOST_PID,
+    HOST_NETWORK,
+    HOST_IPC,
+    IS_POD_SANDBOX,
+    MAX
 };
 
 using namespace falcosecurity::_internal;
 
-static std::vector<ss_plugin_table_fieldinfo> fields = {
-        {CONTAINER_EXPOSED_FIELD_IP, SS_PLUGIN_ST_STRING, true},
-        {CONTAINER_EXPOSED_FIELD_USER, SS_PLUGIN_ST_STRING, true},
-};
+// Field definitions using modern C++ array initialization
+static constexpr std::array<ss_plugin_table_fieldinfo,
+                            static_cast<std::size_t>(FIELD_IDX::MAX)>
+        FIELD_DEFINITIONS = {
+                {{FIELD_STR::ID.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::NAME.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::TYPE.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::IMAGE.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::IMAGEID.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::IMAGEREPO.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::IMAGETAG.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::IMAGEDIGEST.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::CPU_SHARES.data(), SS_PLUGIN_ST_INT64, true},
+                 {FIELD_STR::MEMORY_LIMIT.data(), SS_PLUGIN_ST_INT64, true},
+                 {FIELD_STR::CPU_QUOTA.data(), SS_PLUGIN_ST_INT64, true},
+                 {FIELD_STR::CPU_PERIOD.data(), SS_PLUGIN_ST_INT64, true},
+                 {FIELD_STR::IP.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::USER.data(), SS_PLUGIN_ST_STRING, true},
+                 {FIELD_STR::CREATED_TIME.data(), SS_PLUGIN_ST_INT64, true},
+                 {FIELD_STR::PRIVILEGED.data(), SS_PLUGIN_ST_BOOL, true},
+                 {FIELD_STR::HOST_PID.data(), SS_PLUGIN_ST_BOOL, true},
+                 {FIELD_STR::HOST_NETWORK.data(), SS_PLUGIN_ST_BOOL, true},
+                 {FIELD_STR::HOST_IPC.data(), SS_PLUGIN_ST_BOOL, true},
+                 {FIELD_STR::IS_POD_SANDBOX.data(), SS_PLUGIN_ST_BOOL, true}}};
+
+// Use array directly - no memory copying needed
+
+static ss_plugin_rc read_field(const container_info* ctr, FIELD_IDX field_id,
+                               ss_plugin_state_data* out)
+{
+    switch(field_id)
+    {
+    case FIELD_IDX::ID:
+        out->str = ctr->m_id.c_str();
+        break;
+    case FIELD_IDX::NAME:
+        out->str = ctr->m_name.c_str();
+        break;
+    case FIELD_IDX::TYPE:
+        out->str = to_string(ctr->m_type);
+        break;
+    case FIELD_IDX::IMAGE:
+        out->str = ctr->m_image.c_str();
+        break;
+    case FIELD_IDX::IMAGEID:
+        out->str = ctr->m_imageid.c_str();
+        break;
+    case FIELD_IDX::IMAGEREPO:
+        out->str = ctr->m_imagerepo.c_str();
+        break;
+    case FIELD_IDX::IMAGETAG:
+        out->str = ctr->m_imagetag.c_str();
+        break;
+    case FIELD_IDX::IMAGEDIGEST:
+        out->str = ctr->m_imagedigest.c_str();
+        break;
+    case FIELD_IDX::CPU_SHARES:
+        out->s64 = ctr->m_cpu_shares;
+        break;
+    case FIELD_IDX::MEMORY_LIMIT:
+        out->s64 = ctr->m_memory_limit;
+        break;
+    case FIELD_IDX::CPU_QUOTA:
+        out->s64 = ctr->m_cpu_quota;
+        break;
+    case FIELD_IDX::CPU_PERIOD:
+        out->s64 = ctr->m_cpu_period;
+        break;
+    case FIELD_IDX::IP:
+        out->str = ctr->m_container_ip.c_str();
+        break;
+    case FIELD_IDX::USER:
+        out->str = ctr->m_container_user.c_str();
+        break;
+    case FIELD_IDX::CREATED_TIME:
+        out->s64 = ctr->m_created_time;
+        break;
+    case FIELD_IDX::PRIVILEGED:
+        out->b = ctr->m_privileged;
+        break;
+    case FIELD_IDX::HOST_PID:
+        out->b = ctr->m_host_pid;
+        break;
+    case FIELD_IDX::HOST_NETWORK:
+        out->b = ctr->m_host_network;
+        break;
+    case FIELD_IDX::HOST_IPC:
+        out->b = ctr->m_host_ipc;
+        break;
+    case FIELD_IDX::IS_POD_SANDBOX:
+        out->b = ctr->m_is_pod_sandbox;
+        break;
+    default:
+        return SS_PLUGIN_FAILURE;
+    }
+    return SS_PLUGIN_SUCCESS;
+}
 
 static const char* reader_get_table_name(ss_plugin_table_t* t)
 {
-    return CONTAINER_TABLE_NAME;
+    return CONTAINER_TABLE_NAME.data();
 }
 
 static uint64_t reader_get_table_size(ss_plugin_table_t* t)
@@ -48,18 +184,11 @@ static ss_plugin_rc reader_read_entry_field(ss_plugin_table_t* t,
                                             ss_plugin_state_data* out)
 {
     auto ctr = static_cast<const container_info*>(e);
-    switch((uintptr_t)f)
-    {
-    case CONTAINER_FIELD_IP + 1:
-        out->str = ctr->m_container_ip.c_str();
-        break;
-    case CONTAINER_FIELD_USER + 1:
-        out->str = ctr->m_container_user.c_str();
-        break;
-    default:
-        return SS_PLUGIN_FAILURE;
-    }
-    return SS_PLUGIN_SUCCESS;
+
+    // Convert field pointer to field ID (offset by 1 to avoid NULL)
+    auto field_id = static_cast<FIELD_IDX>((uintptr_t)f - 1);
+
+    return read_field(ctr, field_id, out);
 }
 
 static void reader_release_table_entry(ss_plugin_table_t* t,
@@ -91,17 +220,17 @@ reader_iterate_entries(ss_plugin_table_t* t,
 static const ss_plugin_table_fieldinfo* list_table_fields(ss_plugin_table_t* t,
                                                           uint32_t* nfields)
 {
-    *nfields = fields.size();
-    return fields.data();
+    *nfields = FIELD_DEFINITIONS.size();
+    return FIELD_DEFINITIONS.data();
 }
 
 static ss_plugin_table_field_t* get_table_field(ss_plugin_table_t* t,
                                                 const char* name,
                                                 ss_plugin_state_type data_type)
 {
-    for(unsigned long i = 0; i < fields.size(); i++)
+    for(unsigned long i = 0; i < FIELD_DEFINITIONS.size(); i++)
     {
-        if(strcmp(fields[i].name, name) == 0)
+        if(strcmp(FIELD_DEFINITIONS[i].name, name) == 0)
         {
             // note: shifted by 1 so that we never return 0 (interpreted as
             // NULL)
@@ -208,7 +337,7 @@ ss_plugin_table_input& my_plugin::get_table()
     using st = falcosecurity::state_value_type;
 
     static ss_plugin_table_input input;
-    input.name = CONTAINER_TABLE_NAME;
+    input.name = CONTAINER_TABLE_NAME.data();
     input.key_type = st::SS_PLUGIN_ST_STRING;
     input.table = (void*)&m_containers;
 

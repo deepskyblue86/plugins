@@ -20,7 +20,7 @@ enum container_type
     CT_UNKNOWN = 0xffff
 };
 
-static std::string inline to_string(enum container_type ct)
+static const char* to_string(enum container_type ct)
 {
     switch(ct)
     {

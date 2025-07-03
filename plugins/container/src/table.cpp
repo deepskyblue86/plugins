@@ -69,15 +69,17 @@ static void reader_release_table_entry(ss_plugin_table_t* t,
 }
 
 static ss_plugin_bool
-reader_iterate_entries(ss_plugin_table_t* t, ss_plugin_table_iterator_func_t it,
+reader_iterate_entries(ss_plugin_table_t* t,
+                       ss_plugin_table_iterator_func_t func,
                        ss_plugin_table_iterator_state_t* s)
 {
-    auto containers = static_cast<std::unordered_map<
+    auto* containers = static_cast<std::unordered_map<
             std::string, std::shared_ptr<const container_info>>*>(t);
-    bool ret = true;
-    for(const auto& c : *containers)
+
+    bool ret{true};
+    for(const auto& [_, container] : *containers)
     {
-        ret = it(s, (ss_plugin_table_entry_t*)c.second.get());
+        ret = func(s, (ss_plugin_table_entry_t*)container.get());
         if(!ret)
         {
             break;

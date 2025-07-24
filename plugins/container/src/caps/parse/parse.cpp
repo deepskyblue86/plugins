@@ -77,7 +77,7 @@ bool my_plugin::parse_async_event(const falcosecurity::parse_event_input& in)
     if(added)
     {
         m_logger.log(fmt::format("Adding container: {}", cinfo->m_id),
-                     falcosecurity::_internal::SS_PLUGIN_LOG_SEV_TRACE);
+                     falcosecurity::_internal::SS_PLUGIN_LOG_SEV_DEBUG);
         m_containers[cinfo->m_id] = cinfo;
         m_last_container = cinfo;
         m_asked_containers.erase(cinfo->m_id);
@@ -85,7 +85,7 @@ bool my_plugin::parse_async_event(const falcosecurity::parse_event_input& in)
     else
     {
         m_logger.log(fmt::format("Removing container: {}", cinfo->m_id),
-                     falcosecurity::_internal::SS_PLUGIN_LOG_SEV_TRACE);
+                     falcosecurity::_internal::SS_PLUGIN_LOG_SEV_DEBUG);
         m_containers.erase(cinfo->m_id);
     }
 

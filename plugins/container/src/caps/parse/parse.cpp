@@ -189,9 +189,13 @@ bool my_plugin::parse_exit_process_event(
             m_container_id_field.read_value(tr, thread_entry, container_id);
             if(!container_id.empty())
             {
-                m_logger.log(fmt::format("Removing container from procexit: {}",
-                                         container_id),
-                             falcosecurity::_internal::SS_PLUGIN_LOG_SEV_TRACE);
+                std::string exe;
+                m_threads_field_exe.read_value(tr, thread_entry, exe);
+                m_logger.log(
+                        fmt::format(
+                                "Removing container from procexit of {}: {}",
+                                exe, container_id),
+                        falcosecurity::_internal::SS_PLUGIN_LOG_SEV_TRACE);
                 m_containers.erase(container_id);
             }
         }

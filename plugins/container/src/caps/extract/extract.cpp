@@ -1,5 +1,8 @@
 #include <plugin.h>
 
+#include <iterator>
+#include <fmt/core.h>
+
 //////////////////////////
 // Extract capability
 //////////////////////////
@@ -501,7 +504,8 @@ static inline void
 concatenate_container_labels(const std::map<std::string, std::string> &labels,
                              std::string *s)
 {
-    for(auto const &label_pair : labels)
+    auto out = std::back_inserter(*s);
+    for(const auto &label_pair : labels)
     {
         // exclude annotations and internal labels
         if(label_pair.first.find("annotation.") == 0 ||
@@ -511,12 +515,12 @@ concatenate_container_labels(const std::map<std::string, std::string> &labels,
         }
         if(!s->empty())
         {
-            s->append(", ");
+            fmt::format_to(out, ", ");
         }
-        s->append(label_pair.first);
+        fmt::format_to(out, "{}", label_pair.first);
         if(!label_pair.second.empty())
         {
-            s->append(":" + label_pair.second);
+            fmt::format_to(out, ":{}", label_pair.second);
         }
     }
 }
@@ -646,18 +650,13 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
     case TYPE_CONTAINER_MOUNTS:
     {
         std::string tstr;
+        auto out = std::back_inserter(tstr);
         bool first = true;
-        for(auto &mntinfo : cinfo->m_mounts)
+        for(const auto &mntinfo : cinfo->m_mounts)
         {
-            if(first)
-            {
-                first = false;
-            }
-            else
-            {
-                tstr += ",";
-            }
-            tstr += mntinfo.to_string();
+            fmt::format_to(out, "{}{}", (first ? "" : ","),
+                           mntinfo.to_string());
+            first = false;
         }
         req.set_value(tstr);
         break;
@@ -691,29 +690,27 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         }
         if(mntinfo)
         {
-            std::string tstr;
             switch(field_id)
             {
             case TYPE_CONTAINER_MOUNT:
-                tstr = mntinfo->to_string();
+                req.set_value(mntinfo->to_string());
                 break;
             case TYPE_CONTAINER_MOUNT_SOURCE:
-                tstr = mntinfo->m_source;
+                req.set_value(mntinfo->m_source);
                 break;
             case TYPE_CONTAINER_MOUNT_DEST:
-                tstr = mntinfo->m_dest;
+                req.set_value(mntinfo->m_dest);
                 break;
             case TYPE_CONTAINER_MOUNT_MODE:
-                tstr = mntinfo->m_mode;
+                req.set_value(mntinfo->m_mode);
                 break;
             case TYPE_CONTAINER_MOUNT_RDWR:
-                tstr = (mntinfo->m_rdwr ? "true" : "false");
+                req.set_value(mntinfo->m_rdwr ? "true" : "false");
                 break;
             case TYPE_CONTAINER_MOUNT_PROPAGATION:
-                tstr = mntinfo->m_propagation;
+                req.set_value(mntinfo->m_propagation);
                 break;
             }
-            req.set_value(tstr);
         }
         break;
     }
@@ -730,9 +727,8 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
     case TYPE_CONTAINER_LIVENESS_PROBE:
     case TYPE_CONTAINER_READINESS_PROBE:
     {
-        std::string tstr = "NONE";
         bool set = false;
-        for(auto &probe : cinfo->m_health_probes)
+        for(const auto &probe : cinfo->m_health_probes)
         {
             if((field_id == TYPE_CONTAINER_HEALTHCHECK &&
                 probe.m_type == container_health_probe::PT_HEALTHCHECK) ||
@@ -741,12 +737,12 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
                (field_id == TYPE_CONTAINER_READINESS_PROBE &&
                 probe.m_type == container_health_probe::PT_READINESS_PROBE))
             {
-                tstr = probe.m_exe;
-
-                for(auto &arg : probe.m_args)
+                std::string tstr;
+                auto out = std::back_inserter(tstr);
+                fmt::format_to(out, "{}", probe.m_exe);
+                for(const auto &arg : probe.m_args)
                 {
-                    tstr += " ";
-                    tstr += arg;
+                    fmt::format_to(out, " {}", arg);
                 }
                 req.set_value(tstr);
                 set = true;
@@ -755,7 +751,7 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         }
         if(!set)
         {
-            req.set_value(tstr);
+            req.set_value("NONE");
         }
         break;
     }
@@ -863,33 +859,24 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
                 sandbox_container_info = m_containers[sandbox_id];
             }
         }
+
+        const auto &labels_to_use =
+                (sandbox_container_info)
+                        ? sandbox_container_info->m_pod_sandbox_labels
+                        : cinfo->m_pod_sandbox_labels;
+
         if(field_id == TYPE_K8S_POD_LABEL)
         {
             auto arg_key = req.get_arg_key();
-            if(sandbox_container_info &&
-               sandbox_container_info->m_pod_sandbox_labels.count(arg_key) > 0)
+            if(labels_to_use.count(arg_key) > 0)
             {
-                req.set_value(sandbox_container_info->m_pod_sandbox_labels.at(
-                        arg_key));
-            }
-            else if(cinfo->m_pod_sandbox_labels.count(arg_key) > 0)
-            {
-                req.set_value(cinfo->m_pod_sandbox_labels.at(arg_key));
+                req.set_value(labels_to_use.at(arg_key));
             }
         }
         else
         {
             std::string labels;
-            if(sandbox_container_info)
-            {
-                concatenate_container_labels(
-                        sandbox_container_info->m_pod_sandbox_labels, &labels);
-            }
-            else
-            {
-                concatenate_container_labels(cinfo->m_pod_sandbox_labels,
-                                             &labels);
-            }
+            concatenate_container_labels(labels_to_use, &labels);
             req.set_value(labels);
         }
         break;
@@ -900,7 +887,7 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
             auto sandbox_id = cinfo->m_pod_sandbox_id.substr(0, SHORT_ID_LEN);
             if(m_containers.count(sandbox_id) > 0)
             {
-                auto &sandbox_container_info = m_containers[sandbox_id];
+                const auto &sandbox_container_info = m_containers[sandbox_id];
                 req.set_value(sandbox_container_info->m_container_ip);
             }
         }
@@ -915,7 +902,7 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
             auto sandbox_id = cinfo->m_pod_sandbox_id.substr(0, SHORT_ID_LEN);
             if(m_containers.count(sandbox_id) > 0)
             {
-                auto &sandbox_container_info = m_containers[sandbox_id];
+                const auto &sandbox_container_info = m_containers[sandbox_id];
                 req.set_value(sandbox_container_info->m_pod_sandbox_cniresult);
             }
         }
@@ -926,7 +913,7 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         break;
     case TYPE_IS_CONTAINER_HEALTHCHECK:
     {
-        int16_t category;
+        int16_t category = CAT_NONE;
         // Since we do write thread category only if not NONE for containerized
         // processes
         try
@@ -935,14 +922,13 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         }
         catch(...)
         {
-            category = CAT_NONE;
         }
         req.set_value(category == CAT_HEALTHCHECK);
         break;
     }
     case TYPE_IS_CONTAINER_LIVENESS_PROBE:
     {
-        int16_t category;
+        int16_t category = CAT_NONE;
         // Since we do write thread category only if not NONE for containerized
         // processes
         try
@@ -951,14 +937,13 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         }
         catch(...)
         {
-            category = CAT_NONE;
         }
         req.set_value(category == CAT_LIVENESS_PROBE);
         break;
     }
     case TYPE_IS_CONTAINER_READINESS_PROBE:
     {
-        int16_t category;
+        int16_t category = CAT_NONE;
         // Since we do write thread category only if not NONE for containerized
         // processes
         try
@@ -967,7 +952,6 @@ bool my_plugin::extract(const falcosecurity::extract_fields_input &in)
         }
         catch(...)
         {
-            category = CAT_NONE;
         }
         req.set_value(category == CAT_READINESS_PROBE);
         break;

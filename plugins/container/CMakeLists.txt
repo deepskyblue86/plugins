@@ -34,7 +34,6 @@ if(ENABLE_ASYNC)
     add_dependencies(container go-worker)
 endif()
 include(plugin-sdk-cpp)
-include(reflex)
 include(fmt)
 
 # project compilation options
@@ -65,7 +64,7 @@ endif()
 target_include_directories(container PRIVATE ${CMAKE_BINARY_DIR}/src/ src/ ${PLUGIN_SDK_INCLUDE} ${PLUGIN_SDK_DEPS_INCLUDE} ${WORKER_INCLUDE})
 
 # project linked libraries
-target_link_libraries(container PRIVATE fmt::fmt-header-only ReflexLibStatic ${WORKER_DEP} ${WORKER_LIB})
+target_link_libraries(container PRIVATE fmt::fmt-header-only ${WORKER_DEP} ${WORKER_LIB})
 
 option(ENABLE_TESTS "Enable build of unit tests" ON)
 if(ENABLE_TESTS)

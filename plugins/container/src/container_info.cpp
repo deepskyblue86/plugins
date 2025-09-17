@@ -16,9 +16,9 @@ limitations under the License.
 
 */
 
+#include <regex>
 #include <utility>
 #include <algorithm>
-#include <reflex/matcher.h>
 #include "container_info.h"
 
 const container_mount_info *container_info::mount_by_idx(uint32_t idx) const
@@ -35,34 +35,46 @@ const container_mount_info *
 container_info::mount_by_source(const std::string &source) const
 {
     // note: linear search
-    // enable multiline matching to match "^..."
-    reflex::Pattern pattern(source, "(?m)");
-    for(auto &mntinfo : m_mounts)
+    try
     {
-        reflex::Matcher matcher(pattern, mntinfo.m_source.c_str());
-        if(matcher.find())
+        std::regex pattern(source, std::regex::multiline);
+        for(const auto &mntinfo : m_mounts)
         {
-            return &mntinfo;
+            // checks if the pattern matches any part of the string
+            if(std::regex_search(mntinfo.m_source, pattern))
+            {
+                return &mntinfo;
+            }
         }
     }
-    return NULL;
+    catch(const std::regex_error &e)
+    {
+    }
+
+    return nullptr;
 }
 
 const container_mount_info *
 container_info::mount_by_dest(const std::string &dest) const
 {
     // note: linear search
-    // enable multiline matching to match "^..."
-    reflex::Pattern pattern(dest, "(?m)");
-    for(auto &mntinfo : m_mounts)
+    try
     {
-        reflex::Matcher matcher(pattern, mntinfo.m_dest.c_str());
-        if(matcher.find())
+        std::regex pattern(dest, std::regex::multiline);
+        for(const auto &mntinfo : m_mounts)
         {
-            return &mntinfo;
+            // checks if the pattern matches any part of the string
+            if(std::regex_search(mntinfo.m_dest, pattern))
+            {
+                return &mntinfo;
+            }
         }
     }
-    return NULL;
+    catch(const std::regex_error &e)
+    {
+    }
+
+    return nullptr;
 }
 
 container_health_probe::probe_type

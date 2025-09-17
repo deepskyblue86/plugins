@@ -4,8 +4,6 @@
 
 using namespace libsinsp::runc;
 
-static reflex::Pattern pattern("/([A-Za-z0-9]+(?:[._-](?:[A-Za-z0-9]+))*)/");
-
 bool containerd::resolve(const std::string& cgroup, std::string& container_id)
 {
     // Containers created via ctr
@@ -13,7 +11,12 @@ bool containerd::resolve(const std::string& cgroup, std::string& container_id)
     // Since we cannot know the namespace in advance, we try to
     // extract it from the cgroup path by following provided regex,
     // and use that to eventually extract the container id.
-    reflex::Matcher matcher(pattern, cgroup);
+
+    static reflex::Pattern pattern(
+            "/([A-Za-z0-9]+(?:[._-](?:[A-Za-z0-9]+))*)/");
+    static reflex::Matcher matcher(pattern);
+
+    matcher.input(cgroup);
     if(matcher.find())
     {
         const auto containerd_namespace =

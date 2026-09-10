@@ -81,7 +81,7 @@ bool my_plugin::stop_async_events() noexcept
     return true;
 }
 
-void my_plugin::dump(
+void my_plugin::dump_state(
         std::unique_ptr<falcosecurity::async_event_handler> async_handler)
 {
     m_logger.log(fmt::format("dumping plugin internal state: {} containers",

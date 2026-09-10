@@ -62,8 +62,8 @@ class my_plugin
     bool start_async_events(
             std::shared_ptr<falcosecurity::async_event_handler_factory> f);
     bool stop_async_events() noexcept;
-    void
-    dump(std::unique_ptr<falcosecurity::async_event_handler> async_handler);
+    void dump_state(
+            std::unique_ptr<falcosecurity::async_event_handler> async_handler);
 #endif
 
 #ifdef _HAS_EXTRACT
